@@ -167,6 +167,47 @@ class TestDirectoryScanning(unittest.TestCase):
         coord_set = {(c.x, c.y) for c in coords}
         self.assertIn((5, 6), coord_set)
         self.assertIn((10, 20), coord_set)
+    
+    def test_scan_modern_structure_with_bin_extension(self):
+        """Test scanning files in modern map/X/Y.bin structure."""
+        # Create modern structure with .bin extension: map/X/Y.bin
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        
+        # Create coordinate directories and files with .bin extension
+        for x in [10, 11]:
+            x_dir = map_dir / str(x)
+            x_dir.mkdir()
+            for y in [20, 21]:
+                (x_dir / f"{y}.bin").touch()
+        
+        coords = scan_directory(self.test_path)
+        self.assertEqual(len(coords), 4)
+        
+        # Check coordinates
+        coord_set = {(c.x, c.y) for c in coords}
+        self.assertIn((10, 20), coord_set)
+        self.assertIn((10, 21), coord_set)
+        self.assertIn((11, 20), coord_set)
+        self.assertIn((11, 21), coord_set)
+    
+    def test_scan_modern_structure_mixed_extensions(self):
+        """Test scanning files with both Y and Y.bin formats."""
+        # Create modern structure with mixed extensions
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        x_dir = map_dir / "10"
+        x_dir.mkdir()
+        (x_dir / "20").touch()        # Without extension
+        (x_dir / "21.bin").touch()    # With extension
+        
+        coords = scan_directory(self.test_path)
+        self.assertEqual(len(coords), 2)
+        
+        # Check coordinates
+        coord_set = {(c.x, c.y) for c in coords}
+        self.assertIn((10, 20), coord_set)
+        self.assertIn((10, 21), coord_set)
 
 
 class TestFileDeletion(unittest.TestCase):
@@ -297,6 +338,29 @@ class TestFileDeletion(unittest.TestCase):
         self.assertFalse((chunkdata_dir / "chunkdata_0_34.bin").exists())
         # Other chunk should remain
         self.assertTrue((chunkdata_dir / "chunkdata_1_35.bin").exists())
+    
+    def test_delete_modern_structure_with_bin_extension(self):
+        """Test deletion of files in modern map/X/Y.bin structure."""
+        # Create modern structure with .bin extension
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        x_dir = map_dir / "10"
+        x_dir.mkdir()
+        (x_dir / "20.bin").touch()
+        (x_dir / "21.bin").touch()
+        
+        files_checked, files_deleted, files_protected = delete_files_in_area(
+            self.test_path, 10, 20, 11, 22,
+            delete_map_data=True,
+            dry_run=False
+        )
+        
+        self.assertEqual(files_checked, 2)
+        self.assertEqual(files_deleted, 2)
+        self.assertEqual(files_protected, 0)
+        # Files should be deleted
+        self.assertFalse((x_dir / "20.bin").exists())
+        self.assertFalse((x_dir / "21.bin").exists())
 
 
 if __name__ == "__main__":

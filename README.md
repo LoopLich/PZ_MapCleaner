@@ -127,17 +127,17 @@ save_folder/
 save_folder/
   ├── map/
   │   ├── 10/
-  │   │   ├── 20
-  │   │   └── 21
+  │   │   ├── 20.bin (or just 20)
+  │   │   └── 21.bin (or just 21)
   │   └── 11/
-  │       ├── 20
-  │       └── 21
+  │       ├── 20.bin (or just 20)
+  │       └── 21.bin (or just 21)
   └── chunkdata/
       ├── chunkdata_0_0.bin
       └── chunkdata_0_1.bin
 ```
 
-The tool automatically detects and handles both structures.
+The tool automatically detects and handles both structures, and supports both `map/X/Y` and `map/X/Y.bin` file formats.
 
 ## Finding Your Save Directory
 
