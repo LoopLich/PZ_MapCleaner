@@ -337,6 +337,10 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
     """
     Scan directory for map files and extract coordinates.
     
+    Supports two directory structures:
+    1. Legacy: map_X_Y.bin files in the root directory
+    2. Modern: map/X/Y files where X is a directory and Y is a file
+    
     Args:
         directory_path: Path to the save directory
     
@@ -351,6 +355,7 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
     if not directory_path.is_dir():
         raise NotADirectoryError(f"Not a directory: {directory_path}")
     
+    # Check for legacy structure: map_X_Y.bin files in root
     for entry in directory_path.iterdir():
         if entry.is_file() and entry.name.startswith("map_"):
             try:
@@ -359,6 +364,25 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
             except (ValueError, IndexError):
                 # Skip files that don't match the expected pattern
                 continue
+    
+    # Check for modern structure: map/X/Y files
+    map_dir = directory_path / "map"
+    if map_dir.exists() and map_dir.is_dir():
+        for x_dir in map_dir.iterdir():
+            if x_dir.is_dir():
+                try:
+                    x = int(x_dir.name)
+                    for y_file in x_dir.iterdir():
+                        if y_file.is_file():
+                            try:
+                                y = int(y_file.name)
+                                coords.append(ChunkCoordinate(x, y))
+                            except (ValueError, OSError):
+                                # Skip files with non-numeric names
+                                continue
+                except (ValueError, OSError):
+                    # Skip directories with non-numeric names
+                    continue
     
     return coords
 
@@ -375,7 +399,8 @@ def list_map_coverage(directory_path: Path) -> None:
     
     if not coords:
         print("No map files found in directory.")
-        print("Make sure you're pointing to the correct save folder containing map_*.bin files.")
+        print("Make sure you're pointing to the correct save folder.")
+        print("Expected structure: map_*.bin files in root OR map/X/Y files in subdirectories.")
     else:
         coords.sort(key=lambda c: (c.x, c.y))
         
@@ -402,31 +427,64 @@ def _delete_file_if_exists(
     directory_path: Path,
     filename: str,
     deleted_files: Set[str],
-    dry_run: bool
+    dry_run: bool,
+    x: Optional[int] = None,
+    y: Optional[int] = None
 ) -> bool:
     """
     Helper function to delete a single file.
     
+    Supports both legacy and modern directory structures:
+    - Legacy: map_X_Y.bin, chunkdata_X_Y.bin, zpop_X_Y.bin in root
+    - Modern: map/X/Y files for map data, chunkdata/chunkdata_X_Y.bin for chunk data
+    
     Args:
         directory_path: Path to the directory containing the file
-        filename: Name of the file to delete
-        deleted_files: Set of already deleted filenames
+        filename: Name of the file to delete (used to construct the full path)
+        deleted_files: Set of already deleted filenames (to avoid duplicates)
         dry_run: If True, only show what would be deleted without actually deleting
+        x: X coordinate (ONLY needed for map files in modern structure where the 
+           directory structure is map/X/Y instead of map_X_Y.bin)
+        y: Y coordinate (ONLY needed for map files in modern structure)
     
     Returns:
         True if file was deleted (or would be deleted in dry run), False otherwise
     """
+    # Try legacy structure first: files in root
     filepath = directory_path / filename
-    if filepath.exists() and filename not in deleted_files:
+    file_key = filename
+    
+    # If legacy file doesn't exist, try modern structure
+    if not filepath.exists():
+        if x is not None and y is not None and filename.startswith("map_"):
+            # Modern structure: map/X/Y
+            filepath = directory_path / "map" / str(x) / str(y)
+            file_key = f"map/{x}/{y}"
+        elif filename.startswith("chunkdata_"):
+            # Modern structure: chunkdata/chunkdata_X_Y.bin
+            filepath = directory_path / "chunkdata" / filename
+            file_key = f"chunkdata/{filename}"
+        elif filename.startswith("zpop_"):
+            # Modern structure: zpop files might also be in a subdirectory
+            # Try zpop subdirectory first, fall back to chunkdata
+            zpop_path = directory_path / "zpop" / filename
+            if zpop_path.exists():
+                filepath = zpop_path
+                file_key = f"zpop/{filename}"
+            else:
+                filepath = directory_path / "chunkdata" / filename
+                file_key = f"chunkdata/{filename}"
+    
+    if filepath.exists() and file_key not in deleted_files:
         if dry_run:
-            print(f"Would delete: {filename}")
+            print(f"Would delete: {file_key}")
         else:
             try:
                 filepath.unlink()
-                print(f"Deleted: {filename}")
+                print(f"Deleted: {file_key}")
             except Exception as e:
-                print(f"Error deleting {filename}: {e}")
-        deleted_files.add(filename)
+                print(f"Error deleting {file_key}: {e}")
+        deleted_files.add(file_key)
         return True
     return False
 
@@ -501,18 +559,22 @@ def delete_files_in_area(
             # Delete map data
             if delete_map_data:
                 filename = coordinate_to_filename(x, y, "M")
-                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run, x, y):
                     files_deleted += 1
             
             # Delete chunk data
             if delete_chunk_data:
                 filename = coordinate_to_filename(x, y, "C")
+                # x, y not needed - chunk files use same structure in both legacy and modern saves
+                # (chunkdata_X_Y.bin in root or chunkdata/ subdirectory)
                 if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
             
             # Delete zpop data
             if delete_zpop_data:
                 filename = coordinate_to_filename(x, y, "Z")
+                # x, y not needed - zpop files use same structure in both legacy and modern saves
+                # (zpop_X_Y.bin in root or chunkdata/ subdirectory)
                 if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
     

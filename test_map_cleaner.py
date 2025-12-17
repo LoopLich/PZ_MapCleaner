@@ -124,6 +124,49 @@ class TestDirectoryScanning(unittest.TestCase):
         test_file.touch()
         with self.assertRaises(NotADirectoryError):
             scan_directory(test_file)
+    
+    def test_scan_modern_structure(self):
+        """Test scanning files in modern map/X/Y structure."""
+        # Create modern structure: map/X/Y
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        
+        # Create coordinate directories and files
+        for x in [10, 11]:
+            x_dir = map_dir / str(x)
+            x_dir.mkdir()
+            for y in [20, 21]:
+                (x_dir / str(y)).touch()
+        
+        coords = scan_directory(self.test_path)
+        self.assertEqual(len(coords), 4)
+        
+        # Check coordinates
+        coord_set = {(c.x, c.y) for c in coords}
+        self.assertIn((10, 20), coord_set)
+        self.assertIn((10, 21), coord_set)
+        self.assertIn((11, 20), coord_set)
+        self.assertIn((11, 21), coord_set)
+    
+    def test_scan_mixed_structure(self):
+        """Test scanning files in both legacy and modern structures."""
+        # Create legacy structure
+        (self.test_path / "map_5_6.bin").touch()
+        
+        # Create modern structure
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        x_dir = map_dir / "10"
+        x_dir.mkdir()
+        (x_dir / "20").touch()
+        
+        coords = scan_directory(self.test_path)
+        self.assertEqual(len(coords), 2)
+        
+        # Check coordinates
+        coord_set = {(c.x, c.y) for c in coords}
+        self.assertIn((5, 6), coord_set)
+        self.assertIn((10, 20), coord_set)
 
 
 class TestFileDeletion(unittest.TestCase):
@@ -208,6 +251,52 @@ class TestFileDeletion(unittest.TestCase):
         self.assertFalse((self.test_path / "map_30_60.bin").exists())
         self.assertFalse((self.test_path / "chunkdata_1_2.bin").exists())
         self.assertFalse((self.test_path / "zpop_1_2.bin").exists())
+    
+    def test_delete_modern_structure(self):
+        """Test deletion of files in modern map/X/Y structure."""
+        # Create modern structure
+        map_dir = self.test_path / "map"
+        map_dir.mkdir()
+        x_dir = map_dir / "10"
+        x_dir.mkdir()
+        (x_dir / "20").touch()
+        (x_dir / "21").touch()
+        
+        files_checked, files_deleted, files_protected = delete_files_in_area(
+            self.test_path, 10, 20, 11, 22,
+            delete_map_data=True,
+            dry_run=False
+        )
+        
+        self.assertEqual(files_checked, 2)
+        self.assertEqual(files_deleted, 2)
+        self.assertEqual(files_protected, 0)
+        # Files should be deleted
+        self.assertFalse((x_dir / "20").exists())
+        self.assertFalse((x_dir / "21").exists())
+    
+    def test_delete_modern_chunkdata(self):
+        """Test deletion of chunkdata files in modern structure."""
+        # Create modern chunkdata structure
+        chunkdata_dir = self.test_path / "chunkdata"
+        chunkdata_dir.mkdir()
+        (chunkdata_dir / "chunkdata_0_34.bin").touch()
+        (chunkdata_dir / "chunkdata_1_35.bin").touch()
+        
+        # Chunk 0_34 covers map coordinates 0-29, 1020-1049 (30x30 tiles per chunk)
+        files_checked, files_deleted, files_protected = delete_files_in_area(
+            self.test_path, 0, 1020, 30, 1050,
+            delete_chunk_data=True,
+            dry_run=False
+        )
+        
+        # We check 30x30 = 900 coordinates, but only 1 chunkdata file should be deleted
+        self.assertEqual(files_checked, 900)
+        self.assertEqual(files_deleted, 1)
+        self.assertEqual(files_protected, 0)
+        self.assertFalse((chunkdata_dir / "chunkdata_0_34.bin").exists())
+        # Other chunk should remain
+        self.assertTrue((chunkdata_dir / "chunkdata_1_35.bin").exists())
 
 
 if __name__ == "__main__":

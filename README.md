@@ -109,6 +109,36 @@ python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 3
 - **Chunk Data (`chunkdata_*.bin`)**: Contains detailed chunk information (30x30 map tiles per chunk)
 - **Zpop Data (`zpop_*.bin`)**: Contains zombie population data for chunks (30x30 map tiles per chunk)
 
+## Supported Directory Structures
+
+This tool supports both legacy and modern Project Zomboid save directory structures:
+
+**Legacy Structure** (single-player saves):
+```
+save_folder/
+  ├── map_10_20.bin
+  ├── map_11_21.bin
+  ├── chunkdata_0_0.bin
+  └── zpop_0_0.bin
+```
+
+**Modern Structure** (multiplayer/server saves):
+```
+save_folder/
+  ├── map/
+  │   ├── 10/
+  │   │   ├── 20
+  │   │   └── 21
+  │   └── 11/
+  │       ├── 20
+  │       └── 21
+  └── chunkdata/
+      ├── chunkdata_0_0.bin
+      └── chunkdata_0_1.bin
+```
+
+The tool automatically detects and handles both structures.
+
 ## Finding Your Save Directory
 
 Default save locations:
@@ -116,7 +146,11 @@ Default save locations:
 - **Linux**: `~/.zomboid/Saves/` or `~/Zomboid/Saves/`
 - **Mac**: `~/Library/Application Support/Zomboid/Saves/`
 
+**For single-player saves:**
 Within the Saves directory, navigate to your world (e.g., `Survivor` or `Apocalypse`) and then your specific save name.
+
+**For multiplayer/server saves:**
+Navigate to `Saves/Multiplayer/` and then your server name. The save directory will contain `map/`, `chunkdata/`, and possibly `map_meta.bin` files.
 
 ## Safety Tips
 
