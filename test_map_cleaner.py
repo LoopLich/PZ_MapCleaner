@@ -484,8 +484,10 @@ class TestSafehouseLoading(unittest.TestCase):
         # Check region (world coords / 10)
         self.assertEqual(sh.region.from_x, 100)
         self.assertEqual(sh.region.from_y, 200)
-        self.assertEqual(sh.region.to_x, 105)  # (1000 + 50 + 9) // 10
-        self.assertEqual(sh.region.to_y, 203)  # (2000 + 30 + 9) // 10
+        # Ceiling division: (1000 + 50 + 9) // 10 = ceil((1000 + 50) / 10) = 105
+        self.assertEqual(sh.region.to_x, 105)
+        # Ceiling division: (2000 + 30 + 9) // 10 = ceil((2000 + 30) / 10) = 203
+        self.assertEqual(sh.region.to_y, 203)
 
 
 if __name__ == "__main__":

@@ -301,8 +301,8 @@ def load_safehouses(directory_path: Path) -> List[SafeHouse]:
                 
                 safehouses.append(SafeHouse(region, owner, players, title))
             except (ValueError, IndexError) as e:
-                # Failed to read this safehouse, skip remaining safehouses
-                # This can happen if the file format doesn't match exactly
+                # Failed to read this safehouse, stopping processing to prevent further errors
+                # This can happen if the file format doesn't match exactly or the file is corrupted
                 print(f"Warning: Failed to read safehouse {i+1} of {safehouse_count}: {e}")
                 print(f"Successfully read {len(safehouses)} safehouse(s) before error.")
                 break
