@@ -89,21 +89,30 @@ class BinaryReader:
     
     def read_int8(self) -> int:
         """Read a signed 8-bit integer."""
-        value = struct.unpack_from('>b', self.data, self.position)[0]
-        self.position += 1
-        return value
+        try:
+            value = struct.unpack_from('>b', self.data, self.position)[0]
+            self.position += 1
+            return value
+        except struct.error as e:
+            raise ValueError(f"Failed to read int8 at position {self.position}: {e}")
     
     def read_int16(self) -> int:
         """Read a signed 16-bit integer (big-endian)."""
-        value = struct.unpack_from('>h', self.data, self.position)[0]
-        self.position += 2
-        return value
+        try:
+            value = struct.unpack_from('>h', self.data, self.position)[0]
+            self.position += 2
+            return value
+        except struct.error as e:
+            raise ValueError(f"Failed to read int16 at position {self.position}: {e}")
     
     def read_int32(self) -> int:
         """Read a signed 32-bit integer (big-endian)."""
-        value = struct.unpack_from('>i', self.data, self.position)[0]
-        self.position += 4
-        return value
+        try:
+            value = struct.unpack_from('>i', self.data, self.position)[0]
+            self.position += 4
+            return value
+        except struct.error as e:
+            raise ValueError(f"Failed to read int32 at position {self.position}: {e}")
     
     def read_string(self, length: Optional[int] = None) -> str:
         """Read a string. If length is None, read length from int16 first."""
@@ -112,6 +121,9 @@ class BinaryReader:
         
         if length == 0:
             return ""
+        
+        if self.position + length > len(self.data):
+            raise ValueError(f"Cannot read {length} bytes at position {self.position}: insufficient data")
         
         string_bytes = self.data[self.position:self.position + length]
         self.position += length
@@ -130,6 +142,8 @@ class BinaryReader:
     
     def skip_bytes(self, count: int):
         """Skip a number of bytes."""
+        if self.position + count > len(self.data):
+            raise ValueError(f"Cannot skip {count} bytes at position {self.position}: insufficient data")
         self.position += count
 
 
