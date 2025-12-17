@@ -143,7 +143,7 @@ class TestFileDeletion(unittest.TestCase):
         (self.test_path / "map_10_20.bin").touch()
         (self.test_path / "map_10_21.bin").touch()
         
-        files_checked, files_deleted = delete_files_in_area(
+        files_checked, files_deleted, files_protected = delete_files_in_area(
             self.test_path, 10, 20, 11, 22,
             delete_map_data=True,
             dry_run=True
@@ -151,6 +151,7 @@ class TestFileDeletion(unittest.TestCase):
         
         self.assertEqual(files_checked, 2)
         self.assertEqual(files_deleted, 2)
+        self.assertEqual(files_protected, 0)
         # Files should still exist in dry run
         self.assertTrue((self.test_path / "map_10_20.bin").exists())
         self.assertTrue((self.test_path / "map_10_21.bin").exists())
@@ -161,7 +162,7 @@ class TestFileDeletion(unittest.TestCase):
         (self.test_path / "map_10_21.bin").touch()
         (self.test_path / "map_15_25.bin").touch()  # Outside area
         
-        files_checked, files_deleted = delete_files_in_area(
+        files_checked, files_deleted, files_protected = delete_files_in_area(
             self.test_path, 10, 20, 11, 22,
             delete_map_data=True,
             dry_run=False
@@ -169,6 +170,7 @@ class TestFileDeletion(unittest.TestCase):
         
         self.assertEqual(files_checked, 2)
         self.assertEqual(files_deleted, 2)
+        self.assertEqual(files_protected, 0)
         # Files in area should be deleted
         self.assertFalse((self.test_path / "map_10_20.bin").exists())
         self.assertFalse((self.test_path / "map_10_21.bin").exists())
@@ -176,7 +178,7 @@ class TestFileDeletion(unittest.TestCase):
         self.assertTrue((self.test_path / "map_15_25.bin").exists())
     
     def test_delete_no_file_types_selected(self):
-        files_checked, files_deleted = delete_files_in_area(
+        files_checked, files_deleted, files_protected = delete_files_in_area(
             self.test_path, 0, 0, 10, 10,
             delete_map_data=False,
             delete_chunk_data=False,
@@ -185,6 +187,7 @@ class TestFileDeletion(unittest.TestCase):
         
         self.assertEqual(files_checked, 0)
         self.assertEqual(files_deleted, 0)
+        self.assertEqual(files_protected, 0)
     
     def test_delete_multiple_file_types(self):
         # Create test files
@@ -192,7 +195,7 @@ class TestFileDeletion(unittest.TestCase):
         (self.test_path / "chunkdata_1_2.bin").touch()
         (self.test_path / "zpop_1_2.bin").touch()
         
-        files_checked, files_deleted = delete_files_in_area(
+        files_checked, files_deleted, files_protected = delete_files_in_area(
             self.test_path, 30, 60, 31, 61,
             delete_map_data=True,
             delete_chunk_data=True,
@@ -201,6 +204,7 @@ class TestFileDeletion(unittest.TestCase):
         
         self.assertEqual(files_checked, 1)
         self.assertEqual(files_deleted, 3)
+        self.assertEqual(files_protected, 0)
         self.assertFalse((self.test_path / "map_30_60.bin").exists())
         self.assertFalse((self.test_path / "chunkdata_1_2.bin").exists())
         self.assertFalse((self.test_path / "zpop_1_2.bin").exists())

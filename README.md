@@ -26,7 +26,7 @@ This tool allows you to delete map files from specific rectangular areas in your
 
 ### List Map Coverage
 
-To see what map files exist in a save directory:
+To see what map files and safehouses exist in a save directory:
 
 ```bash
 python map_cleaner.py /path/to/save/folder --list
@@ -36,6 +36,8 @@ This will show:
 - Number of map files found
 - Coverage area (min/max X and Y coordinates)
 - Dimensions of the mapped area
+- **Number of safehouses found**
+- **Details of each safehouse (owner, players, region)**
 
 ### Delete Map Files
 
@@ -60,30 +62,45 @@ At least one file type option must be specified.
 **Other Options:**
 - `--dry-run`: Preview what would be deleted without actually deleting files
 
+**Safehouse Protection Options:**
+- `--no-safehouse-protection`: **DANGEROUS!** Disable safehouse protection (allows deletion of safehouse areas)
+- `--safehouse-padding N`: Set padding around safehouses (default: 4 cells). Higher values protect more area around safehouses.
+
+## Safehouse Protection
+
+**By default, this tool protects your safehouses from deletion!** The script automatically reads safehouse data from `map_meta.bin` and excludes those areas (plus a configurable padding) from deletion.
+
+- **Default padding**: 4 cells around each safehouse
+- Safehouses are loaded automatically when present
+- Protection can be disabled with `--no-safehouse-protection` (use with extreme caution!)
+- Padding can be adjusted with `--safehouse-padding N`
+
 ## Examples
 
-### Example 1: Preview deletion (dry run)
+### Example 1: List map coverage and safehouses
+```bash
+python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --list
+```
+
+### Example 2: Preview deletion with safehouse protection (dry run)
 ```bash
 python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 30 40 --map-data --dry-run
 ```
 
-### Example 2: Delete only map data
+### Example 3: Delete map data with custom safehouse padding
 ```bash
-python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 30 40 --map-data
+python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 30 40 --map-data --safehouse-padding 6
 ```
 
-### Example 3: Delete all file types
+### Example 4: Delete all file types with safehouse protection
 ```bash
 python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 30 40 --map-data --chunk-data --zpop-data
 ```
 
-### Example 4: List map coverage first, then delete
+### Example 5: Delete without safehouse protection (DANGEROUS!)
 ```bash
-# First, see what you have
-python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --list
-
-# Then delete a specific area
-python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 0 0 50 50 --map-data
+# Only use if you're absolutely sure you want to delete safehouse areas
+python map_cleaner.py "/home/user/Zomboid/Saves/Survivor/MyWorld" --area 10 20 30 40 --map-data --no-safehouse-protection
 ```
 
 ## File Types Explained
@@ -132,6 +149,16 @@ The core functionality remains the same: deleting map files in specified rectang
 - Check that files exist in the specified area using `--list`
 - Verify your coordinate ranges are correct
 - Ensure you have write permissions to the directory
+- **Check if files are protected by safehouse areas** - the script shows how many files were protected
+
+**Warning: "Failed to load safehouses"**
+- The `map_meta.bin` file may be missing or corrupted
+- Safehouse protection will be disabled if this occurs
+- You can still proceed with deletion, but safehouses won't be protected
+
+**Safehouses not showing up**
+- Make sure you're in the correct save directory (should contain `map_meta.bin`)
+- Safehouses only exist in multiplayer or if you've claimed a safehouse in single player
 
 ## License
 
