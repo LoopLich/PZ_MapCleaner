@@ -6,10 +6,8 @@ A command-line tool to delete map files from Project Zomboid save directories.
 This script allows you to specify rectangular areas and delete corresponding map files.
 """
 
-import os
 import sys
 import argparse
-import re
 from typing import List, Tuple, Set
 from pathlib import Path
 
@@ -126,6 +124,39 @@ def list_map_coverage(directory_path: Path) -> None:
     print(f"Dimensions: {max_x - min_x + 1} x {max_y - min_y + 1}")
 
 
+def _delete_file_if_exists(
+    directory_path: Path,
+    filename: str,
+    deleted_files: Set[str],
+    dry_run: bool
+) -> bool:
+    """
+    Helper function to delete a single file.
+    
+    Args:
+        directory_path: Path to the directory containing the file
+        filename: Name of the file to delete
+        deleted_files: Set of already deleted filenames
+        dry_run: If True, only show what would be deleted without actually deleting
+    
+    Returns:
+        True if file was deleted (or would be deleted in dry run), False otherwise
+    """
+    filepath = directory_path / filename
+    if filepath.exists() and filename not in deleted_files:
+        if dry_run:
+            print(f"Would delete: {filename}")
+        else:
+            try:
+                filepath.unlink()
+                print(f"Deleted: {filename}")
+            except Exception as e:
+                print(f"Error deleting {filename}: {e}")
+        deleted_files.add(filename)
+        return True
+    return False
+
+
 def delete_files_in_area(
     directory_path: Path,
     start_x: int,
@@ -171,49 +202,19 @@ def delete_files_in_area(
             # Delete map data
             if delete_map_data:
                 filename = coordinate_to_filename(x, y, "M")
-                filepath = directory_path / filename
-                if filepath.exists() and filename not in deleted_files:
-                    if dry_run:
-                        print(f"Would delete: {filename}")
-                    else:
-                        try:
-                            filepath.unlink()
-                            print(f"Deleted: {filename}")
-                        except Exception as e:
-                            print(f"Error deleting {filename}: {e}")
-                    deleted_files.add(filename)
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
             
             # Delete chunk data
             if delete_chunk_data:
                 filename = coordinate_to_filename(x, y, "C")
-                filepath = directory_path / filename
-                if filepath.exists() and filename not in deleted_files:
-                    if dry_run:
-                        print(f"Would delete: {filename}")
-                    else:
-                        try:
-                            filepath.unlink()
-                            print(f"Deleted: {filename}")
-                        except Exception as e:
-                            print(f"Error deleting {filename}: {e}")
-                    deleted_files.add(filename)
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
             
             # Delete zpop data
             if delete_zpop_data:
                 filename = coordinate_to_filename(x, y, "Z")
-                filepath = directory_path / filename
-                if filepath.exists() and filename not in deleted_files:
-                    if dry_run:
-                        print(f"Would delete: {filename}")
-                    else:
-                        try:
-                            filepath.unlink()
-                            print(f"Deleted: {filename}")
-                        except Exception as e:
-                            print(f"Error deleting {filename}: {e}")
-                    deleted_files.add(filename)
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
     
     return files_checked, files_deleted
