@@ -105,6 +105,15 @@ class BinaryReader:
         except struct.error as e:
             raise ValueError(f"Failed to read int16 at position {self.position}: {e}")
     
+    def read_uint16(self) -> int:
+        """Read an unsigned 16-bit integer (big-endian)."""
+        try:
+            value = struct.unpack_from('>H', self.data, self.position)[0]
+            self.position += 2
+            return value
+        except struct.error as e:
+            raise ValueError(f"Failed to read uint16 at position {self.position}: {e}")
+    
     def read_int32(self) -> int:
         """Read a signed 32-bit integer (big-endian)."""
         try:
@@ -115,9 +124,9 @@ class BinaryReader:
             raise ValueError(f"Failed to read int32 at position {self.position}: {e}")
     
     def read_string(self, length: Optional[int] = None) -> str:
-        """Read a string. If length is None, read length from int16 first."""
+        """Read a string. If length is None, read length from uint16 first (Java's DataOutputStream.writeUTF format)."""
         if length is None:
-            length = self.read_int16()
+            length = self.read_uint16()
         
         if length == 0:
             return ""
@@ -292,16 +301,24 @@ def load_safehouses(directory_path: Path) -> List[SafeHouse]:
                 
                 safehouses.append(SafeHouse(region, owner, players, title))
             except (ValueError, IndexError) as e:
-                # Failed to read this safehouse, skip it and continue
-                # This can happen if the file format doesn't match exactly
+                # Failed to read this safehouse, stopping processing to prevent further errors
+                # This can happen if the file format doesn't match exactly or the file is corrupted
+                print(f"Warning: Failed to read safehouse {i+1} of {safehouse_count}: {e}")
+                print(f"Successfully read {len(safehouses)} safehouse(s) before error.")
                 break
     
     except ValueError as e:
-        # This is expected if the file format doesn't match exactly or there are no safehouses
-        # Silently ignore and continue without safehouse protection
+        # Binary format mismatch - provide helpful feedback
+        print(f"Warning: Failed to parse safehouse data from map_meta.bin: {e}")
+        print("This may happen if:")
+        print("  - The file format version is not fully supported")
+        print("  - The file is corrupted")
+        print("  - No safehouses exist in this save")
+        print("Continuing without safehouse protection.")
         return []
     except Exception as e:
-        print(f"Warning: Could not parse map_meta.bin (this is normal if no safehouses exist): {e}")
+        print(f"Warning: Could not parse map_meta.bin: {e}")
+        print("Continuing without safehouse protection.")
         return []
     
     return safehouses
