@@ -440,11 +440,12 @@ def _delete_file_if_exists(
     
     Args:
         directory_path: Path to the directory containing the file
-        filename: Name of the file to delete (legacy structure)
-        deleted_files: Set of already deleted filenames
+        filename: Name of the file to delete (used to construct the full path)
+        deleted_files: Set of already deleted filenames (to avoid duplicates)
         dry_run: If True, only show what would be deleted without actually deleting
-        x: X coordinate (for modern structure)
-        y: Y coordinate (for modern structure)
+        x: X coordinate (ONLY needed for map files in modern structure where the 
+           directory structure is map/X/Y instead of map_X_Y.bin)
+        y: Y coordinate (ONLY needed for map files in modern structure)
     
     Returns:
         True if file was deleted (or would be deleted in dry run), False otherwise
@@ -564,14 +565,16 @@ def delete_files_in_area(
             # Delete chunk data
             if delete_chunk_data:
                 filename = coordinate_to_filename(x, y, "C")
-                # x, y not passed for chunk data - filename already contains chunk coordinates
+                # x, y not needed - chunk files use same structure in both legacy and modern saves
+                # (chunkdata_X_Y.bin in root or chunkdata/ subdirectory)
                 if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
             
             # Delete zpop data
             if delete_zpop_data:
                 filename = coordinate_to_filename(x, y, "Z")
-                # x, y not passed for zpop data - filename already contains chunk coordinates
+                # x, y not needed - zpop files use same structure in both legacy and modern saves
+                # (zpop_X_Y.bin in root or chunkdata/ subdirectory)
                 if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
     
