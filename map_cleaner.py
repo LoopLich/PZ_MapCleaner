@@ -248,46 +248,60 @@ def load_safehouses(directory_path: Path) -> List[SafeHouse]:
                         reader.skip_bytes(4)
         
         if version <= 112:
-            print("Warning: map_meta.bin version does not support zones/safehouses.")
+            # Version too old, no safehouse support
             return safehouses
         
-        # Read safehouses
-        safehouse_count = reader.read_int32()
-        for _ in range(safehouse_count):
-            x = reader.read_int32()
-            y = reader.read_int32()
-            w = reader.read_int32()
-            h = reader.read_int32()
-            owner = reader.read_string()
-            
-            player_count = reader.read_int32()
-            players = []
-            for _ in range(player_count):
-                players.append(reader.read_string())
-            
-            reader.skip_bytes(8)  # long - last visited
-            
-            title = f"{owner}'s safe house"
-            if version >= 101:
-                title = reader.read_string()
-            
-            if version >= 177:
-                player_respawn_count = reader.read_int32()
-                for _ in range(player_respawn_count):
-                    reader.read_string()
-            
-            # Convert to map coordinates (divide by 10)
-            region = Region(
-                x // 10,
-                y // 10,
-                (x + w + 9) // 10,  # Ceiling division
-                (y + h + 9) // 10
-            )
-            
-            safehouses.append(SafeHouse(region, owner, players, title))
+        # Try to read safehouses - may fail if file ends before safehouse section
+        try:
+            safehouse_count = reader.read_int32()
+        except (ValueError, IndexError):
+            # No safehouse data or unexpected end of file
+            return safehouses
+        
+        for i in range(safehouse_count):
+            try:
+                x = reader.read_int32()
+                y = reader.read_int32()
+                w = reader.read_int32()
+                h = reader.read_int32()
+                owner = reader.read_string()
+                
+                player_count = reader.read_int32()
+                players = []
+                for _ in range(player_count):
+                    players.append(reader.read_string())
+                
+                reader.skip_bytes(8)  # long - last visited
+                
+                title = f"{owner}'s safe house"
+                if version >= 101:
+                    title = reader.read_string()
+                
+                if version >= 177:
+                    player_respawn_count = reader.read_int32()
+                    for _ in range(player_respawn_count):
+                        reader.read_string()
+                
+                # Convert to map coordinates (divide by 10)
+                region = Region(
+                    x // 10,
+                    y // 10,
+                    (x + w + 9) // 10,  # Ceiling division
+                    (y + h + 9) // 10
+                )
+                
+                safehouses.append(SafeHouse(region, owner, players, title))
+            except (ValueError, IndexError) as e:
+                # Failed to read this safehouse, skip it and continue
+                # This can happen if the file format doesn't match exactly
+                break
     
+    except ValueError as e:
+        # This is expected if the file format doesn't match exactly or there are no safehouses
+        # Silently ignore and continue without safehouse protection
+        return []
     except Exception as e:
-        print(f"Warning: Failed to load safehouses: {e}")
+        print(f"Warning: Could not parse map_meta.bin (this is normal if no safehouses exist): {e}")
         return []
     
     return safehouses
@@ -361,6 +375,7 @@ def list_map_coverage(directory_path: Path) -> None:
     
     if not coords:
         print("No map files found in directory.")
+        print("Make sure you're pointing to the correct save folder containing map_*.bin files.")
     else:
         coords.sort(key=lambda c: (c.x, c.y))
         
