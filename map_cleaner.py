@@ -564,13 +564,15 @@ def delete_files_in_area(
             # Delete chunk data
             if delete_chunk_data:
                 filename = coordinate_to_filename(x, y, "C")
-                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run, x, y):
+                # x, y not passed for chunk data - filename already contains chunk coordinates
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
             
             # Delete zpop data
             if delete_zpop_data:
                 filename = coordinate_to_filename(x, y, "Z")
-                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run, x, y):
+                # x, y not passed for zpop data - filename already contains chunk coordinates
+                if _delete_file_if_exists(directory_path, filename, deleted_files, dry_run):
                     files_deleted += 1
     
     return files_checked, files_deleted, files_protected
