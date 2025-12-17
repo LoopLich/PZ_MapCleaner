@@ -22,6 +22,8 @@ class ChunkCoordinate:
         return f"ChunkCoordinate({self.x}, {self.y})"
     
     def __eq__(self, other):
+        if not isinstance(other, ChunkCoordinate):
+            return False
         return self.x == other.x and self.y == other.y
     
     def __hash__(self):
@@ -37,10 +39,18 @@ def get_coord_from_map_name(filename: str) -> ChunkCoordinate:
     
     Returns:
         ChunkCoordinate object with x and y coordinates
+    
+    Raises:
+        ValueError: If filename format is invalid
     """
     filename = filename.replace("map_", "").replace(".bin", "")
     parts = filename.split("_")
-    return ChunkCoordinate(int(parts[0]), int(parts[1]))
+    if len(parts) != 2:
+        raise ValueError(f"Invalid map filename format: expected 2 coordinate parts, got {len(parts)}")
+    try:
+        return ChunkCoordinate(int(parts[0]), int(parts[1]))
+    except ValueError as e:
+        raise ValueError(f"Invalid coordinate values in filename: {e}")
 
 
 def coordinate_to_filename(x: int, y: int, filetype: str) -> str:

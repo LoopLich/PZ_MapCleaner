@@ -38,6 +38,12 @@ class TestChunkCoordinate(unittest.TestCase):
         coord2 = ChunkCoordinate(10, 20)
         coord_set = {coord1, coord2}
         self.assertEqual(len(coord_set), 1)
+    
+    def test_equality_with_non_coordinate(self):
+        coord = ChunkCoordinate(10, 20)
+        self.assertNotEqual(coord, "not a coordinate")
+        self.assertNotEqual(coord, 42)
+        self.assertNotEqual(coord, None)
 
 
 class TestFilenameParsing(unittest.TestCase):
@@ -68,6 +74,14 @@ class TestFilenameParsing(unittest.TestCase):
     def test_coordinate_to_filename_invalid(self):
         with self.assertRaises(ValueError):
             coordinate_to_filename(10, 20, "X")
+    
+    def test_get_coord_from_invalid_format(self):
+        with self.assertRaises(ValueError):
+            get_coord_from_map_name("map_12.bin")  # Missing second coordinate
+    
+    def test_get_coord_from_non_numeric(self):
+        with self.assertRaises(ValueError):
+            get_coord_from_map_name("map_abc_def.bin")  # Non-numeric coordinates
 
 
 class TestDirectoryScanning(unittest.TestCase):
