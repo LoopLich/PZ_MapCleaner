@@ -185,14 +185,17 @@ The core functionality remains the same: deleting map files in specified rectang
 - Ensure you have write permissions to the directory
 - **Check if files are protected by safehouse areas** - the script shows how many files were protected
 
-**Warning: "Failed to load safehouses"**
-- The `map_meta.bin` file may be missing or corrupted
-- Safehouse protection will be disabled if this occurs
+**Warning: "Failed to parse safehouse data from map_meta.bin"**
+- The `map_meta.bin` file may be corrupted or use an unsupported format version
+- The script will provide detailed information about what went wrong
+- Safehouse protection will be disabled if parsing fails
 - You can still proceed with deletion, but safehouses won't be protected
 
 **Safehouses not showing up**
 - Make sure you're in the correct save directory (should contain `map_meta.bin`)
 - Safehouses only exist in multiplayer or if you've claimed a safehouse in single player
+- The script now uses the correct binary format (unsigned 16-bit integers for string lengths) matching Java's DataOutputStream format
+- If you see "Failed to read safehouse X of Y", it means some safehouses were read successfully but the file became corrupted or truncated partway through
 
 ## License
 

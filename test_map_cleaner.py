@@ -8,13 +8,16 @@ Run with: python3 test_map_cleaner.py
 import unittest
 import tempfile
 import shutil
+import struct
 from pathlib import Path
 from map_cleaner import (
     ChunkCoordinate,
     get_coord_from_map_name,
     coordinate_to_filename,
     scan_directory,
-    delete_files_in_area
+    delete_files_in_area,
+    BinaryReader,
+    load_safehouses
 )
 
 
@@ -361,6 +364,128 @@ class TestFileDeletion(unittest.TestCase):
         # Files should be deleted
         self.assertFalse((x_dir / "20.bin").exists())
         self.assertFalse((x_dir / "21.bin").exists())
+
+
+class TestBinaryReader(unittest.TestCase):
+    """Test BinaryReader class."""
+    
+    def test_read_uint16(self):
+        """Test reading unsigned 16-bit integers."""
+        # Small value - same for signed and unsigned
+        data1 = struct.pack('>H', 100)
+        reader1 = BinaryReader(data1)
+        self.assertEqual(reader1.read_uint16(), 100)
+        
+        # Larger value - would be negative as signed int16
+        data2 = struct.pack('>H', 40000)
+        reader2 = BinaryReader(data2)
+        self.assertEqual(reader2.read_uint16(), 40000)
+        
+        # Maximum unsigned value
+        data3 = struct.pack('>H', 65535)
+        reader3 = BinaryReader(data3)
+        self.assertEqual(reader3.read_uint16(), 65535)
+    
+    def test_read_string_with_unsigned_length(self):
+        """Test that read_string uses unsigned int16 for length."""
+        # Create string data with unsigned length
+        test_str = "Hello, World!"
+        data = bytearray()
+        data.extend(struct.pack('>H', len(test_str)))  # Unsigned short
+        data.extend(test_str.encode('utf-8'))
+        
+        reader = BinaryReader(bytes(data))
+        result = reader.read_string()
+        self.assertEqual(result, test_str)
+    
+    def test_read_string_empty(self):
+        """Test reading empty string."""
+        data = struct.pack('>H', 0)
+        reader = BinaryReader(data)
+        result = reader.read_string()
+        self.assertEqual(result, "")
+
+
+class TestSafehouseLoading(unittest.TestCase):
+    """Test safehouse loading functionality."""
+    
+    def setUp(self):
+        """Create temporary directory for testing."""
+        self.test_dir = tempfile.mkdtemp()
+        self.test_path = Path(self.test_dir)
+    
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.test_dir)
+    
+    def test_load_safehouses_no_file(self):
+        """Test loading safehouses when map_meta.bin doesn't exist."""
+        safehouses = load_safehouses(self.test_path)
+        self.assertEqual(len(safehouses), 0)
+    
+    def test_load_safehouses_valid_file(self):
+        """Test loading safehouses from a valid map_meta.bin file."""
+        # Create a minimal valid map_meta.bin
+        data = bytearray()
+        data.extend(b'META')
+        data.extend(struct.pack('>i', 194))  # version
+        
+        # Map bounds (0,0) to (0,0)
+        data.extend(struct.pack('>i', 0))  # min_x
+        data.extend(struct.pack('>i', 0))  # min_y
+        data.extend(struct.pack('>i', 0))  # max_x
+        data.extend(struct.pack('>i', 0))  # max_y
+        
+        # Room and building definitions for (0,0)
+        data.extend(struct.pack('>i', 0))  # room count
+        data.extend(struct.pack('>i', 0))  # building count
+        
+        # Safehouse count
+        data.extend(struct.pack('>i', 1))
+        
+        # Safehouse data
+        data.extend(struct.pack('>i', 1000))  # x (world coords)
+        data.extend(struct.pack('>i', 2000))  # y
+        data.extend(struct.pack('>i', 50))    # w
+        data.extend(struct.pack('>i', 30))    # h
+        
+        owner = 'TestOwner'
+        data.extend(struct.pack('>H', len(owner)))  # Unsigned short
+        data.extend(owner.encode('utf-8'))
+        
+        data.extend(struct.pack('>i', 1))  # player count
+        player = 'TestPlayer'
+        data.extend(struct.pack('>H', len(player)))  # Unsigned short
+        data.extend(player.encode('utf-8'))
+        
+        data.extend(struct.pack('>q', 123456789))  # last visited
+        
+        title = 'Test Safehouse'
+        data.extend(struct.pack('>H', len(title)))  # Unsigned short
+        data.extend(title.encode('utf-8'))
+        
+        data.extend(struct.pack('>i', 0))  # player respawn count
+        
+        # Write to file
+        meta_file = self.test_path / 'map_meta.bin'
+        with open(meta_file, 'wb') as f:
+            f.write(data)
+        
+        # Load and verify
+        safehouses = load_safehouses(self.test_path)
+        self.assertEqual(len(safehouses), 1)
+        
+        sh = safehouses[0]
+        self.assertEqual(sh.owner, 'TestOwner')
+        self.assertEqual(sh.title, 'Test Safehouse')
+        self.assertEqual(len(sh.players), 1)
+        self.assertEqual(sh.players[0], 'TestPlayer')
+        
+        # Check region (world coords / 10)
+        self.assertEqual(sh.region.from_x, 100)
+        self.assertEqual(sh.region.from_y, 200)
+        self.assertEqual(sh.region.to_x, 105)  # (1000 + 50 + 9) // 10
+        self.assertEqual(sh.region.to_y, 203)  # (2000 + 30 + 9) // 10
 
 
 if __name__ == "__main__":
