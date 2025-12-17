@@ -339,7 +339,7 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
     
     Supports two directory structures:
     1. Legacy: map_X_Y.bin files in the root directory
-    2. Modern: map/X/Y files where X is a directory and Y is a file
+    2. Modern: map/X/Y or map/X/Y.bin files where X is a directory and Y is a file
     
     Args:
         directory_path: Path to the save directory
@@ -365,7 +365,7 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
                 # Skip files that don't match the expected pattern
                 continue
     
-    # Check for modern structure: map/X/Y files
+    # Check for modern structure: map/X/Y files or map/X/Y.bin files
     map_dir = directory_path / "map"
     if map_dir.exists() and map_dir.is_dir():
         for x_dir in map_dir.iterdir():
@@ -375,7 +375,12 @@ def scan_directory(directory_path: Path) -> List[ChunkCoordinate]:
                     for y_file in x_dir.iterdir():
                         if y_file.is_file():
                             try:
-                                y = int(y_file.name)
+                                # Handle both Y and Y.bin formats
+                                filename = y_file.name
+                                if filename.endswith('.bin'):
+                                    y = int(filename[:-4])  # Remove .bin extension
+                                else:
+                                    y = int(filename)
                                 coords.append(ChunkCoordinate(x, y))
                             except (ValueError, OSError):
                                 # Skip files with non-numeric names
@@ -400,7 +405,7 @@ def list_map_coverage(directory_path: Path) -> None:
     if not coords:
         print("No map files found in directory.")
         print("Make sure you're pointing to the correct save folder.")
-        print("Expected structure: map_*.bin files in root OR map/X/Y files in subdirectories.")
+        print("Expected structure: map_*.bin files in root OR map/X/Y or map/X/Y.bin files in subdirectories.")
     else:
         coords.sort(key=lambda c: (c.x, c.y))
         
@@ -436,7 +441,7 @@ def _delete_file_if_exists(
     
     Supports both legacy and modern directory structures:
     - Legacy: map_X_Y.bin, chunkdata_X_Y.bin, zpop_X_Y.bin in root
-    - Modern: map/X/Y files for map data, chunkdata/chunkdata_X_Y.bin for chunk data
+    - Modern: map/X/Y or map/X/Y.bin files for map data, chunkdata/chunkdata_X_Y.bin for chunk data
     
     Args:
         directory_path: Path to the directory containing the file
@@ -457,8 +462,10 @@ def _delete_file_if_exists(
     # If legacy file doesn't exist, try modern structure
     if not filepath.exists():
         if x is not None and y is not None and filename.startswith("map_"):
-            # Modern structure: map/X/Y
+            # Modern structure: try both map/X/Y and map/X/Y.bin
             filepath = directory_path / "map" / str(x) / str(y)
+            if not filepath.exists():
+                filepath = directory_path / "map" / str(x) / f"{y}.bin"
             file_key = f"map/{x}/{y}"
         elif filename.startswith("chunkdata_"):
             # Modern structure: chunkdata/chunkdata_X_Y.bin
