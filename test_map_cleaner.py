@@ -104,8 +104,8 @@ class TestDirectoryScanning(unittest.TestCase):
         # Create test files
         (self.test_path / "map_10_20.bin").touch()
         (self.test_path / "map_11_21.bin").touch()
-        (self.test_path / "chunkdata_0_0.bin").touch()  # Should be ignored
-        (self.test_path / "other_file.txt").touch()  # Should be ignored
+        (self.test_path / "chunkdata_0_0.bin").touch()  # Ignored - scan_directory only looks for map_*.bin
+        (self.test_path / "other_file.txt").touch()  # Ignored - not a map file
         
         coords = scan_directory(self.test_path)
         self.assertEqual(len(coords), 2)

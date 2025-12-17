@@ -196,7 +196,7 @@ def delete_files_in_area(
         Tuple of (files_checked, files_deleted)
     """
     if not any([delete_map_data, delete_chunk_data, delete_zpop_data]):
-        print("Error: Select at least one filetype to delete")
+        print("Error: Select at least one file type to delete")
         return 0, 0
     
     files_checked = 0
