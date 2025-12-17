@@ -399,7 +399,8 @@ def list_map_coverage(directory_path: Path) -> None:
     
     if not coords:
         print("No map files found in directory.")
-        print("Make sure you're pointing to the correct save folder containing map_*.bin files.")
+        print("Make sure you're pointing to the correct save folder.")
+        print("Expected structure: map_*.bin files in root OR map/X/Y files in subdirectories.")
     else:
         coords.sort(key=lambda c: (c.x, c.y))
         
